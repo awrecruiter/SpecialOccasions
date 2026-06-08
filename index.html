@@ -549,11 +549,13 @@ const DEFAULT_DATA = [
     { time: '4:00 PM', dur: '~1 hr', name: 'Boston Exotic Rentals', cost: '$1,000–2,000+/day', lo: 1000, hi: 2000, isCar: true, note: 'Pick up the weekend car (Lamborghini Huracán, McLaren, Bentley). Ask for Matt. Lock in deposit + mileage terms when booking. 75 State St, downtown. Huracán ~$1,000–1,400/day, Bentley ~$500/day; plus refundable deposit (~$3–5K) & ~75 mi/day cap.',
       site: 'https://bostonexoticrentals.com/', map: 'https://maps.google.com/?cid=17926666108896809024', phone: '+18574169307' }
   ]},
-  { date: '2026-06-27', dow: 'SAT', title: 'Racing + Arcade Night', acts: [
-    { time: '2:00 PM', dur: '~4 hrs', name: 'Supercharged Entertainment', cost: '$120–200 for 2', lo: 120, hi: 200, note: 'The Andretti\u2019s stand-in: largest indoor kart track in the Northeast, axe throwing, trampolines, arcade, restaurant + bar. Wrentham, ~35 min south. ~$30/race per person; food & drinks extra.',
+  { date: '2026-06-27', dow: 'SAT', title: 'Supercharged + Providence Night', acts: [
+    { time: '2:00 PM', dur: '~5 hrs', name: 'Supercharged Entertainment', cost: '$140–250 for 2', lo: 140, hi: 250, note: 'The Andretti\u2019s stand-in: largest indoor kart track in the Northeast, axe throwing, trampolines, arcade, restaurant + bar. Wrentham, ~35 min south. ~$30/race per person; food & drinks extra.',
       site: 'https://superchargedma.com/', map: 'https://maps.google.com/?cid=9557731104959999031', phone: '+17748479010' },
-    { time: '8:00 PM', dur: '~2.5 hrs', name: 'F1 Arcade Boston', cost: '$65–120 for 2', lo: 65, hi: 120, note: 'Birthday-night close: F1 racing simulators with motion chairs, cocktails, DJ. ~$32/person for 3 races. Reserve ahead. Open till 1 AM. Seaport waterfront. Cocktails & food climb fast.',
-      site: 'https://f1arcade.com/us/boston', map: 'https://maps.google.com/?cid=9041332201681142978', phone: '+16176753131' }
+    { time: '7:30 PM', dur: '~45 min', name: 'Train south → Providence', cost: '$10–25 for 2', lo: 10, hi: 25, note: 'Drive ~15 min from Supercharged to Mansfield Station (park-and-ride lot). MBTA Providence/Stoughton Line southbound — ~25 min to Providence Station. Weekend service is roughly hourly; check the MBTA app for the exact next departure before you leave the kart track.',
+      site: 'https://www.mbta.com/schedules/CR-Providence', map: 'https://maps.google.com/?q=Mansfield+Commuter+Rail+Station', phone: '+16172223200' },
+    { time: '8:30 PM', dur: 'open', name: 'Providence nightlife (find your spot)', cost: '$150–350 for 2', lo: 150, hi: 350, note: 'Federal Hill is ~10 min walk from Providence Station for Italian + cocktails. Downtown anchors worth a look: The Avery (speakeasy, handcrafted cocktails, Luongo Sq), The Eddy (craft cocktails, downtown), Hot Club (waterfront dive with skyline), Courtland Club (speakeasy). Pick the scene on the ground. Heads up: last northbound train back to Mansfield is typically ~11pm–midnight Saturdays — confirm same-day on the MBTA app so you don’t miss it.',
+      site: 'https://www.goprovidence.com/things-to-do/nightlife/', map: 'https://maps.google.com/?q=Federal+Hill+Providence+RI', phone: '' }
   ]},
   { date: '2026-06-28', dow: 'SUN', title: 'Gun Range + Harbor Jet Skis', acts: [
     { time: '10:00 AM', dur: '~2 hrs', name: 'Boston Firearms Training Center', cost: '$150–280 for 2', lo: 150, hi: 280, note: '5.0 stars / 4,000+ reviews. Beginner-friendly, hands-on instruction before live rounds. Call ahead for a recreational range session (not the LTC class). Everett. ~$75–140/person incl. gun rental, ammo & targets.',
@@ -570,8 +572,8 @@ const DEFAULT_DATA = [
 ];
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-const STORE_KEY = 'bday_itinerary_v3';
-const PREF_KEY = 'bday_prefs_v3';
+const STORE_KEY = 'bday_itinerary_v4';
+const PREF_KEY = 'bday_prefs_v4';
 
 let data;
 try {
