@@ -39,7 +39,8 @@ Deployed as a static `index.html` at `https://special-occasions.vercel.app/`.
 ### 5.2 Where to Stay tab
 
 - Four representative **Everett, MA** Airbnb-style cards (Modern Loft near Encore, Eagle Hill Townhouse, Mystic Riverfront Studio, Glendale Carriage House). Everett bases them near the gun range + Encore casino with easy highway south for Saturday's Wrentham + Providence run.
-- Each card shows: photo (Unsplash CDN, illustrative of the style), area + style tag, price range, nightly + 3-night estimates, and Browse / Map buttons. The Browse link opens a pre-filtered Airbnb search for that Everett area.
+- Each card shows: photo (Unsplash CDN, illustrative of the style), area + style tag, a **Quoted total ($)** input the user fills in after seeing live pricing, and Browse / Map buttons. The Browse link opens a pre-filtered Airbnb search (Everett, dates, max $800).
+- **Honest pricing only:** the cards do not display fabricated nightly/3-night estimates. The Quoted total input is the single source of truth — once entered, it persists in `prefs.quoted[stayId]` and flows into the budget on the Itinerary tab. Without a quoted total, the budget shows the stay as `TBD · see Airbnb` and excludes it from the grand total.
 - **Per-person selection:** "Your pick" and "His pick" buttons on every card. Tap to claim, tap again to clear. Selected cards get a colored edge. Picks persist in `localStorage`.
 - **Dismiss:** an `×` in the top-left of each card hides that option. Dismissed cards collapse into a chip bar at the bottom with a "Restore all" link, so nothing is permanently destroyed.
 

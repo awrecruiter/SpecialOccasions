@@ -466,6 +466,29 @@
   }
   .restore-all:hover { color: var(--accent-2); }
 
+  /* ---------- Quoted-price input on stay cards ---------- */
+  .quoted-row { margin-top: 14px; }
+  .quoted-lab {
+    display: block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;
+  }
+  .quoted-input {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px;
+    transition: border-color 0.15s;
+  }
+  .quoted-input:focus-within { border-color: var(--accent); }
+  .quoted-prefix { font-family: 'JetBrains Mono', monospace; color: var(--muted); font-weight: 700; }
+  .quoted-input input {
+    flex: 0 1 110px; min-width: 0;
+    background: transparent; border: none; outline: none; color: var(--txt);
+    font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700;
+    padding: 4px 0;
+  }
+  .quoted-input input::placeholder { color: rgba(255,255,255,0.22); font-weight: 400; }
+  .quoted-cap { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+  .bs-cost.tbd { color: var(--muted); font-weight: 500; font-style: italic; }
+
   /* ---------- Airbnb divider ---------- */
   .airbnb-divider {
     display: flex; align-items: center; gap: 14px; margin: 32px 0 4px;
@@ -551,7 +574,7 @@
 
   <div class="panel" id="panel-stays">
     <div class="stays-intro">
-      Airbnbs in <b>Everett, MA</b> — close to the gun range and Encore Boston Harbor, easy highway south for Saturday's Supercharged + Providence run. Target <b>$400–800 total</b> (3 nights ≈ $130–265/night). Photos are illustrative of the style; tap <b>Browse</b> on any card for live availability. Use the <b>×</b> on any card to dismiss what's a no.
+      Airbnbs in <b>Everett, MA</b> — close to the gun range, Encore Boston Harbor, and easy highway south for Saturday's Supercharged + Providence run. Search is capped at <b>$800 total</b> for the 3 nights. <b>Live pricing only:</b> tap <b>Browse</b> to see real Airbnb units, then drop the quoted total into the field on the card so the budget reflects what you'll actually pay. Photos are illustrative of the style. Use <b>×</b> to dismiss a no.
     </div>
     <div class="stays" id="stays"></div>
     <div class="dismissed-bar" id="dismissedBar" style="display:none"></div>
@@ -598,8 +621,8 @@ const DEFAULT_DATA = [
 ];
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-const STORE_KEY = 'bday_itinerary_v5';
-const PREF_KEY = 'bday_prefs_v5';
+const STORE_KEY = 'bday_itinerary_v6';
+const PREF_KEY = 'bday_prefs_v6';
 
 let data;
 try {
@@ -608,13 +631,14 @@ try {
 } catch (e) { data = structuredClone(DEFAULT_DATA); }
 
 // prefs: included activities, car day count, and the two people's stay picks
-const DEFAULT_PREFS = { excluded: [], carDays: 1, pick: { you: null, him: null }, dismissed: [] };
+const DEFAULT_PREFS = { excluded: [], carDays: 1, pick: { you: null, him: null }, dismissed: [], quoted: {} };
 let prefs;
 try {
   const raw = localStorage.getItem(PREF_KEY);
   prefs = raw ? Object.assign(structuredClone(DEFAULT_PREFS), JSON.parse(raw)) : structuredClone(DEFAULT_PREFS);
   if (!prefs.pick) prefs.pick = { you: null, him: null };
   if (!prefs.dismissed) prefs.dismissed = [];
+  if (!prefs.quoted) prefs.quoted = {};
 } catch (e) { prefs = structuredClone(DEFAULT_PREFS); }
 
 let openDays = new Set();
@@ -834,7 +858,7 @@ function resetData() {
 const STAYS = [
   {
     id: 'loft_encore', name: 'Modern Loft near Encore', area: 'Lower Broadway, Everett \u00b7 ~5 min to casino',
-    style: 'Loft \u00b7 entire place', nightly: '~$190\u2013230', total: '~$570\u2013690', lo: 570, hi: 690, top: true,
+    style: 'Loft \u00b7 entire place', top: true,
     gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Lower%20Broadway%20Everett',
     hue: 30,
     img: 'https://images.unsplash.com/photo-1502672023488-70e25813eb80?w=800&q=80&auto=format&fit=crop',
@@ -845,7 +869,7 @@ const STAYS = [
   },
   {
     id: 'eagle_townhouse', name: 'Eagle Hill Townhouse', area: 'Eagle Hill, Everett \u00b7 2BR \u00b7 full kitchen',
-    style: 'Townhouse \u00b7 entire place', nightly: '~$170\u2013210', total: '~$510\u2013630', lo: 510, hi: 630, top: true,
+    style: 'Townhouse \u00b7 entire place', top: true,
     gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Eagle%20Hill%20Everett',
     hue: 215,
     img: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&q=80&auto=format&fit=crop',
@@ -856,7 +880,7 @@ const STAYS = [
   },
   {
     id: 'river_studio', name: 'Mystic Riverfront Studio', area: 'Riverfront, Everett \u00b7 view + balcony',
-    style: 'Studio \u00b7 entire place', nightly: '~$140\u2013180', total: '~$420\u2013540', lo: 420, hi: 540, top: false,
+    style: 'Studio \u00b7 entire place', top: false,
     gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Mystic%20River%20Everett',
     hue: 195,
     img: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80&auto=format&fit=crop',
@@ -867,7 +891,7 @@ const STAYS = [
   },
   {
     id: 'glendale_carriage', name: 'Glendale Carriage House', area: 'Glendale, Everett \u00b7 private guest house',
-    style: 'Guest house \u00b7 entire place', nightly: '~$210\u2013260', total: '~$630\u2013780', lo: 630, hi: 780, top: false,
+    style: 'Guest house \u00b7 entire place', top: false,
     gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Glendale%20Everett',
     hue: 95,
     img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80&auto=format&fit=crop',
@@ -880,8 +904,8 @@ const STAYS = [
 
 // All selectable stays = hotels + airbnbs, keyed by id
 function allStayOptions() {
-  const hotels = STAYS.map(s => ({ id: s.id, name: s.name, lo: s.lo, hi: s.hi, kind: 'Airbnb' }));
-  const abs = AIRBNBS.map(n => ({ id: n.id, name: n.name + ' (Airbnb)', lo: n.lo, hi: n.hi, kind: 'Airbnb' }));
+  const hotels = STAYS.map(s => ({ id: s.id, name: s.name, kind: 'Airbnb' }));
+  const abs = AIRBNBS.map(n => ({ id: n.id, name: n.name + ' (Airbnb)', kind: 'Airbnb' }));
   return hotels.concat(abs);
 }
 function findOption(id) { return allStayOptions().find(o => o.id === id) || null; }
@@ -934,9 +958,16 @@ function renderStays() {
       </div>
       <div class="stay-area">${s.area}</div>
       <div class="stay-why">${s.why}</div>
-      <div class="stay-stats">
-        <div class="stat"><div class="lab">Est. / night</div><div class="val">${s.nightly}</div></div>
-        <div class="stat"><div class="lab">Est. 3-night total</div><div class="val price">${s.total}</div></div>
+      <div class="quoted-row">
+        <label for="q_${s.id}" class="quoted-lab">Quoted total from Airbnb</label>
+        <div class="quoted-input">
+          <span class="quoted-prefix">$</span>
+          <input id="q_${s.id}" type="number" min="0" step="1" inputmode="numeric"
+                 value="${prefs.quoted[s.id] || ''}" placeholder="—"
+                 onchange="setQuoted(\'${s.id}\', this.value)"
+                 oninput="this.dataset.dirty=1">
+          <span class="quoted-cap">/ ≤ $800 budget</span>
+        </div>
       </div>
       ${pickBtns(s.id)}
       <div class="stay-links">
@@ -948,6 +979,12 @@ function renderStays() {
   renderDismissedBar();
 }
 
+function setQuoted(id, val) {
+  const n = parseFloat(val);
+  if (!isFinite(n) || n <= 0) { delete prefs.quoted[id]; }
+  else { prefs.quoted[id] = Math.round(n); }
+  savePrefs(); renderBudget();
+}
 function dismissStay(id) {
   if (!prefs.dismissed.includes(id)) prefs.dismissed.push(id);
   if (prefs.pick.you === id) prefs.pick.you = null;
@@ -1049,7 +1086,11 @@ function renderBudget() {
 
   function stayLine(who, opt, cls) {
     if (!opt) return `<div class="bs-row"><span class="bs-who ${cls}">${who}</span><span class="bs-pick none">no stay selected →</span></div>`;
-    return `<div class="bs-row"><span class="bs-who ${cls}">${who}</span><span class="bs-pick">${opt.name}</span><span class="bs-cost">~$${opt.lo}–${opt.hi}</span></div>`;
+    const q = prefs.quoted[opt.id];
+    const costHtml = q
+      ? `<span class="bs-cost">$${q.toLocaleString()}</span>`
+      : `<span class="bs-cost tbd">TBD · see Airbnb</span>`;
+    return `<div class="bs-row"><span class="bs-who ${cls}">${who}</span><span class="bs-pick">${opt.name}</span>${costHtml}</div>`;
   }
   stayEl.innerHTML = `
     <div class="bs-head">Accommodation picks</div>
@@ -1058,13 +1099,20 @@ function renderBudget() {
     ${(you && him && you.id !== him.id) ? `<div class="bs-flag">↔ You two picked different stays — compare on the Where to Stay tab.</div>` : ''}
     ${(you && him && you.id === him.id) ? `<div class="bs-flag match">✓ You both picked the same stay!</div>` : ''}`;
 
-  // include the chosen stay in the total — use "your" pick as the booked one,
-  // fall back to his if only he picked.
+  // Use "your" pick as the booked stay; fall back to his if only he picked.
+  // Stay only enters the grand total once a real quoted price is entered.
   const booked = you || him;
+  const bookedQuote = booked ? prefs.quoted[booked.id] : null;
   let totalLo = lo, totalHi = hi;
-  if (booked) { totalLo += booked.lo; totalHi += booked.hi; }
-
-  const stayTag = booked ? ` (incl. ${booked.name.replace(' (Airbnb)','')})` : ' (no stay yet)';
+  let stayTag;
+  if (booked && bookedQuote) {
+    totalLo += bookedQuote; totalHi += bookedQuote;
+    stayTag = ` (incl. ${booked.name.replace(' (Airbnb)','')} $${bookedQuote.toLocaleString()})`;
+  } else if (booked) {
+    stayTag = ` (stay TBD — enter quoted total to include)`;
+  } else {
+    stayTag = ' (no stay yet)';
+  }
   document.getElementById('budgetTotal').textContent = money(totalLo) + '–' + money(totalHi) + stayTag;
 }
 
