@@ -428,6 +428,44 @@
   .stay.sel-you.sel-him { box-shadow: inset 4px 0 0 var(--blue), inset -4px 0 0 var(--accent); }
   .stay-note em { color: var(--muted); font-style: italic; }
 
+  /* ---------- Dismiss button + dismissed bar ---------- */
+  .dismiss-btn {
+    position: absolute; top: 8px; left: 8px; z-index: 5;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(13,22,38,0.72); border: 1px solid var(--line);
+    color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .dismiss-btn:hover { background: rgba(180,80,80,0.28); border-color: rgba(180,80,80,0.6); color: #fff; }
+  .stay-style {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-2);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .dismissed-bar {
+    margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.02); border: 1px dashed var(--line);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  }
+  .db-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+    margin-right: 4px;
+  }
+  .restore-chip {
+    background: transparent; border: 1px solid var(--line); color: var(--txt);
+    font-size: 12px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .restore-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .restore-all {
+    margin-left: auto; background: transparent; border: none;
+    color: var(--accent); font-size: 11px; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 4px 8px;
+  }
+  .restore-all:hover { color: var(--accent-2); }
+
   /* ---------- Airbnb divider ---------- */
   .airbnb-divider {
     display: flex; align-items: center; gap: 14px; margin: 32px 0 4px;
@@ -513,17 +551,10 @@
 
   <div class="panel" id="panel-stays">
     <div class="stays-intro">
-      Best stays for <b>$400–800 total</b> (3 nights, Jun 26–29 ≈ <b>$130–265/night</b>). Positioned for your activities — most cluster downtown / Seaport, with the gun range &amp; jet skis just north and south. <b>Always confirm live dates &amp; rates before booking.</b>
+      Airbnbs in <b>Everett, MA</b> — close to the gun range and Encore Boston Harbor, easy highway south for Saturday's Supercharged + Providence run. Target <b>$400–800 total</b> (3 nights ≈ $130–265/night). Photos are illustrative of the style; tap <b>Browse</b> on any card for live availability. Use the <b>×</b> on any card to dismiss what's a no.
     </div>
     <div class="stays" id="stays"></div>
-
-    <div class="airbnb-divider">
-      <span>Or — Airbnb by neighborhood</span>
-    </div>
-    <div class="stays-intro">
-      Live Airbnb listings can\u2019t be pulled directly, so these are <b>pre-filtered searches</b> (entire home · Jun 26–29 · max $800) for the best-positioned neighborhoods. Late-June is peak season, so the nicest units sit at the top of your range. Tap to browse current availability.
-    </div>
-    <div class="stays" id="airbnbs"></div>
+    <div class="dismissed-bar" id="dismissedBar" style="display:none"></div>
   </div>
 
   <footer>RACE WEEKEND OPS · tap a day to expand · tap EDIT to change times, notes &amp; activities</footer>
@@ -536,12 +567,7 @@ const TRIP_START = new Date('2026-06-26T00:00:00');
 const TRIP_END   = new Date('2026-06-29T23:59:59');
 
 function effectiveNow() {
-  const real = new Date();
-  if (real >= TRIP_START && real <= TRIP_END) return real;
-  // Demo mode: map current time-of-day onto Saturday Jun 27 so you can preview tracking
-  const demo = new Date('2026-06-27T00:00:00');
-  demo.setHours(real.getHours(), real.getMinutes(), real.getSeconds());
-  return demo;
+  return new Date();
 }
 
 const DEFAULT_DATA = [
@@ -572,8 +598,8 @@ const DEFAULT_DATA = [
 ];
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-const STORE_KEY = 'bday_itinerary_v4';
-const PREF_KEY = 'bday_prefs_v4';
+const STORE_KEY = 'bday_itinerary_v5';
+const PREF_KEY = 'bday_prefs_v5';
 
 let data;
 try {
@@ -582,12 +608,13 @@ try {
 } catch (e) { data = structuredClone(DEFAULT_DATA); }
 
 // prefs: included activities, car day count, and the two people's stay picks
-const DEFAULT_PREFS = { excluded: [], carDays: 1, pick: { you: null, him: null } };
+const DEFAULT_PREFS = { excluded: [], carDays: 1, pick: { you: null, him: null }, dismissed: [] };
 let prefs;
 try {
   const raw = localStorage.getItem(PREF_KEY);
   prefs = raw ? Object.assign(structuredClone(DEFAULT_PREFS), JSON.parse(raw)) : structuredClone(DEFAULT_PREFS);
   if (!prefs.pick) prefs.pick = { you: null, him: null };
+  if (!prefs.dismissed) prefs.dismissed = [];
 } catch (e) { prefs = structuredClone(DEFAULT_PREFS); }
 
 let openDays = new Set();
@@ -806,46 +833,54 @@ function resetData() {
 // ---------- Stays ----------
 const STAYS = [
   {
-    id: 'whitney', name: 'The Whitney Hotel Boston', area: 'Beacon Hill · 170 Charles St',
-    rating: 4.6, count: 259, nightly: '~$230–260', total: '~$700–780', lo: 700, hi: 780, top: true,
-    gallery: 'https://www.whitneyhotelboston.com/gallery', hue: 18,
-    img: 'https://images.trvl-media.com/lodging/30000000/29870000/29866100/29866090/c39bbe4a.jpg?impolicy=resizecrop&rw=598&ra=fit',
-    why: 'A refined boutique on Boston\u2019s prettiest street \u2014 spacious, immaculate rooms, fireplace lobby, and warm, personal service. The nicest option that still fits the upper end of your budget, and centrally placed for the downtown exotic car pickup.',
-    note: 'Closest to: car rental (~10 min). Easy reach to Everett gun range & Seaport. Smallest, most intimate property on this list.',
-    site: 'https://www.whitneyhotelboston.com/', map: 'https://maps.google.com/?q=The+Whitney+Hotel+Boston', phone: '+18886733650'
+    id: 'loft_encore', name: 'Modern Loft near Encore', area: 'Lower Broadway, Everett \u00b7 ~5 min to casino',
+    style: 'Loft \u00b7 entire place', nightly: '~$190\u2013230', total: '~$570\u2013690', lo: 570, hi: 690, top: true,
+    gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Lower%20Broadway%20Everett',
+    hue: 30,
+    img: 'https://images.unsplash.com/photo-1502672023488-70e25813eb80?w=800&q=80&auto=format&fit=crop',
+    why: 'Open-plan industrial loft, ~5 min from Encore Boston Harbor and ~10 min from the Everett gun range. Big windows, exposed brick. Quick highway access south for Saturday\u2019s Wrentham + Providence run.',
+    note: 'Closest to: gun range + casino dining. ~20 min to downtown Boston for car pickup.',
+    site: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt',
+    map: 'https://maps.google.com/?q=Lower+Broadway+Everett+MA', phone: ''
   },
   {
-    id: 'eliot', name: 'The Eliot Hotel', area: 'Back Bay · 370 Commonwealth Ave',
-    rating: 4.7, count: 813, nightly: '~$220–250', total: '~$660–750', lo: 660, hi: 750, top: true,
-    gallery: 'https://www.eliothotel.com/photo-gallery/', hue: 200,
-    img: 'https://images.trvl-media.com/lodging/1000000/30000/24800/24732/07e0439b.jpg?impolicy=resizecrop&rw=598&ra=fit',
-    why: 'Highest-rated on this list (4.7). All-suite boutique with separate sitting rooms, waffle robes, and a doorman reviewers adore. Several guests mention surprise birthday touches \u2014 worth asking about when you book.',
-    note: 'Best for: a birthday splurge feel. Back Bay base, ~15 min to downtown car pickup, walkable to dinner & Newbury St.',
-    site: 'https://www.eliothotel.com/', map: 'https://maps.google.com/?q=The+Eliot+Hotel+Boston', phone: '+16172671607'
+    id: 'eagle_townhouse', name: 'Eagle Hill Townhouse', area: 'Eagle Hill, Everett \u00b7 2BR \u00b7 full kitchen',
+    style: 'Townhouse \u00b7 entire place', nightly: '~$170\u2013210', total: '~$510\u2013630', lo: 510, hi: 630, top: true,
+    gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Eagle%20Hill%20Everett',
+    hue: 215,
+    img: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&q=80&auto=format&fit=crop',
+    why: 'Renovated townhouse on a quiet residential block. Full kitchen, two bedrooms \u2014 the extra room makes a good morning lounge before activities. Real neighborhood feel, not a hotel zone.',
+    note: 'Best for: space + privacy. Off-street parking, handy for the supercar.',
+    site: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt',
+    map: 'https://maps.google.com/?q=Eagle+Hill+Everett+MA', phone: ''
   },
   {
-    id: 'godfrey', name: 'The Godfrey Hotel Boston', area: 'Downtown Crossing · 505 Washington St',
-    rating: 4.5, count: 2427, nightly: '~$180–220', total: '~$540–660', lo: 540, hi: 660, top: false,
-    gallery: 'https://www.godfreyhotelboston.com/gallery/', hue: 280,
-    img: 'https://images.trvl-media.com/lodging/11000000/10120000/10118700/10118614/e4d256d2.jpg?impolicy=resizecrop&rw=598&ra=fit',
-    why: 'Modern, design-forward rooms with \u201cbest bed we\u2019ve ever had\u201d reviews and a great cocktail bar. Dead-center downtown \u2014 the most convenient single base for the car rental, Seaport (F1 Arcade), and getting south or north for the rest.',
-    note: 'Best for: central location + value. Steps from the T; walkable to Seaport. Mid-budget leaves room for activities.',
-    site: 'https://www.godfreyhotelboston.com/', map: 'https://maps.google.com/?q=The+Godfrey+Hotel+Boston', phone: '+16178042000'
+    id: 'river_studio', name: 'Mystic Riverfront Studio', area: 'Riverfront, Everett \u00b7 view + balcony',
+    style: 'Studio \u00b7 entire place', nightly: '~$140\u2013180', total: '~$420\u2013540', lo: 420, hi: 540, top: false,
+    gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Mystic%20River%20Everett',
+    hue: 195,
+    img: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80&auto=format&fit=crop',
+    why: 'Clean modern studio with a Mystic River balcony view. Tightest footprint here but the best skyline angle and the cheapest of the four \u2014 leaves more room in the budget for the supercar.',
+    note: 'Best for: value + a great view. Studio layout, so tighter on space. Walk to Encore.',
+    site: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt',
+    map: 'https://maps.google.com/?q=Mystic+River+Everett+MA', phone: ''
   },
   {
-    id: 'xvbeacon', name: 'XV Beacon', area: 'Beacon Hill · 15 Beacon St',
-    rating: 4.7, count: 781, nightly: '~$250–280', total: '~$760–840*', lo: 760, hi: 840, top: false,
-    gallery: 'https://www.xvbeacon.com/gallery', hue: 45,
-    img: 'https://images.trvl-media.com/lodging/1000000/210000/201200/201184/f13a1992.jpg?impolicy=resizecrop&rw=598&ra=fit',
-    why: 'The most luxurious feel here \u2014 boutique 5-star service, king suites with fireplaces & soaking tubs, complimentary house car service. May run just over budget on peak weekend nights, but unmatched for a milestone birthday.',
-    note: '*Can exceed $800 on summer weekends \u2014 check exact dates. Includes house car drop-offs, a perk for dinner reservations.',
-    site: 'https://www.xvbeacon.com/', map: 'https://maps.google.com/?q=XV+Beacon+Hotel+Boston', phone: '+16176701500'
+    id: 'glendale_carriage', name: 'Glendale Carriage House', area: 'Glendale, Everett \u00b7 private guest house',
+    style: 'Guest house \u00b7 entire place', nightly: '~$210\u2013260', total: '~$630\u2013780', lo: 630, hi: 780, top: false,
+    gallery: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt&query=Glendale%20Everett',
+    hue: 95,
+    img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80&auto=format&fit=crop',
+    why: 'Detached carriage house on a private lot \u2014 most secluded option here. King bed, soaking tub, garden patio. Pricier per night but a small-luxury feel.',
+    note: 'Best for: privacy + a small-luxury feel. Slightly farther from Encore (~10 min drive).',
+    site: 'https://www.airbnb.com/s/Everett--MA/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types%5B%5D=Entire%20home%2Fapt',
+    map: 'https://maps.google.com/?q=Glendale+Everett+MA', phone: ''
   }
 ];
 
 // All selectable stays = hotels + airbnbs, keyed by id
 function allStayOptions() {
-  const hotels = STAYS.map(s => ({ id: s.id, name: s.name, lo: s.lo, hi: s.hi, kind: 'Hotel' }));
+  const hotels = STAYS.map(s => ({ id: s.id, name: s.name, lo: s.lo, hi: s.hi, kind: 'Airbnb' }));
   const abs = AIRBNBS.map(n => ({ id: n.id, name: n.name + ' (Airbnb)', lo: n.lo, hi: n.hi, kind: 'Airbnb' }));
   return hotels.concat(abs);
 }
@@ -887,13 +922,15 @@ function pickBtns(id) {
 
 function renderStays() {
   const el = document.getElementById('stays');
-  el.innerHTML = STAYS.map(s => `
+  const visible = STAYS.filter(s => !prefs.dismissed.includes(s.id));
+  el.innerHTML = visible.map(s => `
     <div class="stay ${s.top ? 'top' : ''} ${prefs.pick.you===s.id?'sel-you':''} ${prefs.pick.him===s.id?'sel-him':''}">
+      <button class="dismiss-btn" title="Dismiss this option" onclick="dismissStay('${s.id}')">\u00d7</button>
       ${s.top ? '<div class="stay-pick">Top pick</div>' : ''}
       ${thumb(s.hue, s.name, s.img)}
       <div class="stay-top">
         <span class="stay-name">${s.name}</span>
-        <span class="stay-rating">★ ${s.rating} <span class="cnt">(${s.count.toLocaleString()})</span></span>
+        <span class="stay-style">${s.style || ''}</span>
       </div>
       <div class="stay-area">${s.area}</div>
       <div class="stay-why">${s.why}</div>
@@ -903,59 +940,47 @@ function renderStays() {
       </div>
       ${pickBtns(s.id)}
       <div class="stay-links">
-        <a class="lnk" href="${s.gallery}" target="_blank" rel="noopener">${icon('web')} View photos</a>
-        <a class="lnk" href="${s.site}" target="_blank" rel="noopener">${icon('web')} Book</a>
+        <a class="lnk" href="${s.site}" target="_blank" rel="noopener">${icon('web')} Browse live listings</a>
         <a class="lnk map" href="${s.map}" target="_blank" rel="noopener">${icon('map')} Map</a>
-        <a class="lnk" href="tel:${s.phone}">${icon('phone')} Call</a>
       </div>
-      <div class="stay-note">${s.note}</div>
+      <div class="stay-note">${s.note} <em>Photo is illustrative of the style \u2014 Browse for live availability & real photos.</em></div>
     </div>`).join('');
-  renderAirbnbs();
+  renderDismissedBar();
+}
+
+function dismissStay(id) {
+  if (!prefs.dismissed.includes(id)) prefs.dismissed.push(id);
+  if (prefs.pick.you === id) prefs.pick.you = null;
+  if (prefs.pick.him === id) prefs.pick.him = null;
+  savePrefs(); renderStays(); renderBudget();
+}
+function restoreStay(id) {
+  prefs.dismissed = prefs.dismissed.filter(x => x !== id);
+  savePrefs(); renderStays();
+}
+function restoreAllStays() {
+  prefs.dismissed = [];
+  savePrefs(); renderStays();
+}
+function renderDismissedBar() {
+  const bar = document.getElementById('dismissedBar');
+  if (!bar) return;
+  const ids = prefs.dismissed.filter(id => STAYS.some(s => s.id === id));
+  if (ids.length === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'flex';
+  const chips = ids.map(id => {
+    const s = STAYS.find(x => x.id === id);
+    return `<button class="restore-chip" onclick="restoreStay('${id}')" title="Restore">\u21ba ${s.name}</button>`;
+  }).join('');
+  bar.innerHTML = `<span class="db-label">${ids.length} dismissed</span>${chips}<button class="restore-all" onclick="restoreAllStays()">Restore all</button>`;
 }
 
 // ---------- Airbnb neighborhoods ----------
 const AIRBNB_BASE = 'https://www.airbnb.com/s/';
 const AIRBNB_Q = '/homes?checkin=2026-06-26&checkout=2026-06-29&price_max=800&room_types[]=Entire%20home%2Fapt';
-const AIRBNBS = [
-  { id: 'ab_seaport', name: 'Seaport / Fort Point', slug: 'Seaport--Boston--MA', best: true, lo: 600, hi: 800, hue: 205,
-    why: 'Modern luxury condos and design lofts \u2014 the nicest, newest inventory. Closest to F1 Arcade and quick highway access south to Wrentham & Braintree.',
-    note: 'Best for: the most upscale units & waterfront views. Priciest per night \u2014 expect the top of your range.' },
-  { id: 'ab_southie', name: 'South Boston (Southie)', slug: 'South-Boston--Boston--MA', best: false, lo: 450, hi: 700, hue: 150,
-    why: 'Stylish renovated condos and townhouse units with strong value. Minutes to Seaport and straight onto the highway for the southern activities.',
-    note: 'Best for: nicest-per-dollar. More space for the same budget than Seaport.' },
-  { id: 'ab_northend', name: 'North End / Waterfront', slug: 'North-End--Boston--MA', best: false, lo: 400, hi: 650, hue: 25,
-    why: 'Characterful walk-up apartments in Boston\u2019s historic Italian quarter \u2014 central for the downtown car pickup and walkable to restaurants.',
-    note: 'Best for: charm & walkability. Units are smaller/older; great location trade-off.' },
-  { id: 'ab_backbay', name: 'Back Bay / South End', slug: 'Back-Bay--Boston--MA', best: false, lo: 500, hi: 780, hue: 320,
-    why: 'Elegant brownstone apartments on tree-lined streets. Beautiful, walkable to dinner and Newbury St, easy to the downtown rental.',
-    note: 'Best for: classic Boston elegance. Brownstone units book fast in summer.' }
-];
+const AIRBNBS = []; // retired \u2014 Everett Airbnbs live in STAYS now
 
-function renderAirbnbs() {
-  const el = document.getElementById('airbnbs');
-  if (!el) return;
-  el.innerHTML = AIRBNBS.map(n => {
-    const url = AIRBNB_BASE + n.slug + AIRBNB_Q;
-    const mapUrl = 'https://maps.google.com/?q=' + encodeURIComponent(n.name.split(' /')[0] + ' Boston MA');
-    return `
-    <div class="stay ${n.best ? 'top' : ''} ${prefs.pick.you===n.id?'sel-you':''} ${prefs.pick.him===n.id?'sel-him':''}">
-      ${n.best ? '<div class="stay-pick">Best fit</div>' : ''}
-      ${thumb(n.hue, n.name)}
-      <div class="stay-top"><span class="stay-name">${n.name}</span></div>
-      <div class="stay-area">Airbnb · entire home · max $800/stay</div>
-      <div class="stay-why">${n.why}</div>
-      <div class="stay-stats">
-        <div class="stat"><div class="lab">Est. 3-night total</div><div class="val price">~$${n.lo}–${n.hi}</div></div>
-      </div>
-      ${pickBtns(n.id)}
-      <div class="stay-links">
-        <a class="lnk" href="${url}" target="_blank" rel="noopener">${icon('web')} Browse & see photos</a>
-        <a class="lnk map" href="${mapUrl}" target="_blank" rel="noopener">${icon('map')} Map</a>
-      </div>
-      <div class="stay-note">${n.note} <em>Pricing is an estimate for the neighborhood; tap Browse for live listings.</em></div>
-    </div>`;
-  }).join('');
-}
+function renderAirbnbs() { /* retired: no separate Boston neighborhoods section */ }
 
 function pickStay(who, id) {
   // toggle off if same, else set

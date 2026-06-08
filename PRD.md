@@ -31,17 +31,17 @@ Deployed as a static `index.html` at `https://special-occasions.vercel.app/`.
 
 - Four day cards (Fri 26 → Mon 29), each with a date chip and expand/collapse.
 - Each activity row: time, name, short description, cost pill ("$X–Y for 2"), and Website / Map / Call buttons. `tel:` links open the phone dialer.
-- **Live tracking:** a "Right now" bar at the top and a green "● now" tag on the active activity. The current day gets a "we are here" badge. Before Jun 26 the app runs in PREVIEW mode (mapping current time onto Saturday so the tracking is visible); on Jun 26–29 it switches to the real clock automatically.
+- **Live tracking:** a "Right now" bar at the top and a green "● now" tag on the active activity. The current day gets a "we are here" badge. The clock always reflects the **actual current time** (preview/demo mapping was removed) — before Jun 26 the "Right now" bar simply reads as "—" until the weekend starts.
 - **Jump to now** button auto-expands and scrolls to the current activity.
 - **Edit mode** per day: change times, names, notes, costs; add or delete activities. Saved to `localStorage` on each change.
 - **Reset to original** restores the seed plan.
 
 ### 5.2 Where to Stay tab
 
-- Four curated hotels (The Whitney, The Eliot, The Godfrey, XV Beacon) and four Airbnb neighborhood cards (Seaport, South Boston, North End, Back Bay).
-- Each card shows: photo thumbnail (real image with SVG fallback on load error), star rating, price range, nightly + 3-night estimates, and Book/Compare/Map/Call (or Browse Airbnbs) buttons.
-- Airbnb cards link to live Airbnb searches pre-filtered with the dates and `price_max=800`.
+- Four representative **Everett, MA** Airbnb-style cards (Modern Loft near Encore, Eagle Hill Townhouse, Mystic Riverfront Studio, Glendale Carriage House). Everett bases them near the gun range + Encore casino with easy highway south for Saturday's Wrentham + Providence run.
+- Each card shows: photo (Unsplash CDN, illustrative of the style), area + style tag, price range, nightly + 3-night estimates, and Browse / Map buttons. The Browse link opens a pre-filtered Airbnb search for that Everett area.
 - **Per-person selection:** "Your pick" and "His pick" buttons on every card. Tap to claim, tap again to clear. Selected cards get a colored edge. Picks persist in `localStorage`.
+- **Dismiss:** an `×` in the top-left of each card hides that option. Dismissed cards collapse into a chip bar at the bottom with a "Restore all" link, so nothing is permanently destroyed.
 
 ### 5.3 Modular budget (on Itinerary tab)
 
